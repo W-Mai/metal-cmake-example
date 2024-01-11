@@ -4,6 +4,7 @@
 
 #include <Metal/Metal.hpp>
 #include <iostream>
+#include "render_types.h"
 
 MTL::ComputePipelineState *pipelineState;
 MTL::CommandQueue *commandQueue;
@@ -86,6 +87,45 @@ void compute(MTL::Buffer *vecA, MTL::Buffer *vecB, MTL::Buffer *result, size_t s
     commandBuffer->waitUntilCompleted();
 }
 
+// https://developer.apple.com/documentation/metal/using_a_render_pipeline_to_render_primitives?language=objc
+
+void test_render_trigle(MTL::Device *device) {
+    // render a triangle to a framebuffer
+    auto vertexData = device->newBuffer(sizeof(float) * 9, MTL::ResourceStorageModeShared);
+    auto *dataPtr = (float *) vertexData->contents();
+    dataPtr[0] = -1.0f;
+    dataPtr[1] = -1.0f;
+    dataPtr[2] = 0.0f;
+    dataPtr[3] = 1.0f;
+    dataPtr[4] = -1.0f;
+    dataPtr[5] = 0.0f;
+    dataPtr[6] = 0.0f;
+    dataPtr[7] = 1.0f;
+    dataPtr[8] = 0.0f;
+
+    // render a triangle to a texture
+    auto textureDescriptor = MTL::TextureDescriptor::texture2DDescriptor(
+            MTL::PixelFormatRGBA8Unorm,
+            512, 512,
+            false
+            );
+    auto texture = device->newTexture(textureDescriptor);
+    auto textureView = texture->newTextureView(MTL::PixelFormatRGBA8Unorm);
+    auto renderPassDescriptor2 = MTL::RenderPassDescriptor::alloc()->init();
+    auto colorAttachment2 = renderPassDescriptor2->colorAttachments()->object(0);
+    colorAttachment2->setClearColor(MTL::ClearColor(0.0, 0.5, 0.5, 1.0));
+    colorAttachment2->setLoadAction(MTL::LoadActionClear);
+    colorAttachment2->setStoreAction(MTL::StoreActionStore);
+    colorAttachment2->setTexture(texture);
+    auto commandBuffer2 = commandQueue->commandBuffer();
+    auto commandEncoder2 = commandBuffer2->renderCommandEncoder(renderPassDescriptor2);
+    commandEncoder2->setVertexBuffer(vertexData, 0, 0);
+    commandEncoder2->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(3));
+    commandEncoder2->endEncoding();
+    commandBuffer2->commit();
+    commandBuffer2->waitUntilCompleted();
+}
+
 int main(int argc, const char *argv[]) {
     NS::AutoreleasePool *pool = NS::AutoreleasePool::alloc()->init();
     MTL::Device *device = MTL::CreateSystemDefaultDevice();
@@ -103,6 +143,8 @@ int main(int argc, const char *argv[]) {
     generate_vector(vecB, size);
 
     compute(vecA, vecB, result, size);
+
+    test_render_trigle(device);
 
     pool->release();
 
