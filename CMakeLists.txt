@@ -15,18 +15,21 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build)
 
 
 # Download and build metal-cpp if it doesn't exist.
-if (NOT EXISTS ./metal-cpp.zip)
-    execute_process(
-            COMMAND curl -o metal-cpp.zip https://developer.apple.com/metal/cpp/files/metal-cpp_${METAL_CPP_VERSION}.zip
-    )
-endif ()
+add_custom_command(
+        OUTPUT ./metal-cpp.zip
+        COMMAND curl -o metal-cpp.zip https://developer.apple.com/metal/cpp/files/metal-cpp_${METAL_CPP_VERSION}.zip
+)
 
-if (NOT EXISTS ./metal-cpp)
-    execute_process(
-            COMMAND unzip metal-cpp.zip
-            WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-    )
-endif ()
+add_custom_command(
+        OUTPUT ./metal-cpp
+        COMMAND unzip metal-cpp.zip
+        DEPENDS ./metal-cpp.zip
+)
+
+add_custom_target(
+        metal_cpp ALL
+        DEPENDS ./metal-cpp
+)
 
 # *.metal files are compiled to *.metallib files
 file(GLOB METAL_SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.metal)
@@ -60,7 +63,10 @@ set(SOURCE_FILES
 )
 add_executable(metal-cmake-example ${SOURCE_FILES})
 
-add_dependencies(metal-cmake-example metal_shader_files)
+add_dependencies(metal-cmake-example
+        metal_cpp
+        metal_shader_files
+)
 
 find_library(METAL Metal)
 find_library(FOUNDATION Foundation)
