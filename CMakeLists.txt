@@ -46,6 +46,12 @@ add_custom_command(
         VERBATIM
 )
 
+add_custom_target(
+        metal_shader_files ALL
+        DEPENDS ./metal_build/shaders.metallib
+)
+
+
 include_directories(${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/metal-cpp)
 
 set(SOURCE_FILES
@@ -53,6 +59,8 @@ set(SOURCE_FILES
         ${METAL_SHADER_FILES}
 )
 add_executable(metal-cmake-example ${SOURCE_FILES})
+
+add_dependencies(metal-cmake-example metal_shader_files)
 
 find_library(METAL Metal)
 find_library(FOUNDATION Foundation)
