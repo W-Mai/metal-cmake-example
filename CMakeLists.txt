@@ -21,32 +21,41 @@ add_custom_command(
 )
 
 add_custom_command(
-        OUTPUT ./metal-cpp
+        OUTPUT ./metal-cpp/*
         COMMAND unzip metal-cpp.zip
         DEPENDS ./metal-cpp.zip
 )
 
 add_custom_target(
         metal_cpp ALL
-        DEPENDS ./metal-cpp
+        DEPENDS ./metal-cpp ./metal-cpp.zip
 )
 
 # *.metal files are compiled to *.metallib files
 file(GLOB METAL_SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.metal)
+list(LENGTH METAL_SHADER_FILES METAL_SHADER_FILES_COUNT)
+
+set(AIR_SHADER_FILES "")
+foreach(METAL_SHADER_FILE ${METAL_SHADER_FILES})
+    get_filename_component(SHADER_NAME ${METAL_SHADER_FILE} NAME_WE)
+    set(AIR_SHADER_FILE "${CMAKE_CURRENT_BINARY_DIR}/metal_build/${SHADER_NAME}.air")
+    list(APPEND AIR_SHADER_FILES ${AIR_SHADER_FILE})
+endforeach()
 
 # When metal shader files are changed, recompile them.
-add_custom_command(
-        OUTPUT ./metal_build/shaders.air
-        COMMAND xcrun -sdk macosx metal -c ${METAL_SHADER_FILES} -o ./metal_build/shaders.air
-        DEPENDS ${METAL_SHADER_FILES}
-        VERBATIM
-)
+foreach(AIR_SHADER_FILE ${AIR_SHADER_FILES})
+    get_filename_component(AIR_SHADER_FILE_NAME ${AIR_SHADER_FILE} NAME_WE)
+    add_custom_command(
+            OUTPUT ${AIR_SHADER_FILE}
+            COMMAND xcrun -sdk macosx metal -c ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${AIR_SHADER_FILE_NAME}.metal -o ${AIR_SHADER_FILE}
+            DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${AIR_SHADER_FILE_NAME}.metal
+    )
+endforeach()
 
 add_custom_command(
         OUTPUT ./metal_build/shaders.metallib
-        COMMAND xcrun -sdk macosx metallib ./metal_build/shaders.air -o ./metal_build/shaders.metallib
-        DEPENDS ./metal_build/shaders.air
-        VERBATIM
+        COMMAND xcrun -sdk macosx metallib ${AIR_SHADER_FILES} -o ./metal_build/shaders.metallib
+        DEPENDS ${AIR_SHADER_FILES}
 )
 
 add_custom_target(
@@ -73,7 +82,6 @@ find_library(FOUNDATION Foundation)
 find_library(QUARTZCORE QuartzCore)
 
 target_link_libraries(metal-cmake-example
-        stdc++
         "-framework Metal"
         "-framework Foundation"
         "-framework QuartzCore"
